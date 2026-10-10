@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# seticon v0.1
-# Usage: seticon <target> <icon-file>
-# Example: seticon Finder ./icons/finder.icns
+# /seticon command wrapper for macOS
+# Usage: /seticon <target> <icon-file>
+# Example: /seticon finder ./icons/finder.icns
+# Example: /seticon Terminal ./icons/terminal.icns
 
 usage() {
   cat <<'EOF'
 Usage:
-  seticon <target> <icon-file>
+  /seticon <target> <icon-file>
 
 Examples:
-  seticon Finder ./icons/finder.icns
-  seticon /Applications/Utilities/Terminal.app ./icons/terminal.icns
-  seticon ~/Desktop/MyFolder ./icons/folder.icns
-  seticon safari ./icons/safari.icns
+  /seticon finder ./icons/finder.icns
+  /seticon Terminal ./icons/terminal.icns
+  /seticon /Applications/Utilities/Terminal.app ./icons/terminal.icns
+  /seticon ~/Desktop/MyFolder ./icons/folder.icns
 
 Notes:
-  - target can be a file, folder, or app path
-  - app aliases like finder, safari, terminal are supported
+  - target can be an app name, app path, folder path, or file path
   - icon file should be .icns, .png, or .jpg
+  - works on macOS only
 EOF
 }
 
@@ -58,7 +59,7 @@ if [[ ! -f "$icon_file" ]]; then
   fi
 fi
 
-# Allow names like finder, terminal, safari
+# Support app name aliases like finder, terminal, safari
 if [[ "$target" != /* && "$target" != ~* && "$target" != .* ]]; then
   resolved_target="$(alias_to_path "$target")"
   if [[ -n "$resolved_target" ]]; then
@@ -71,12 +72,12 @@ if [[ ! -e "$target" ]]; then
   exit 1
 fi
 
-# Convert PNG/JPG to ICNS for compatibility if needed
+# Convert PNG/JPG to ICNS if needed
 if [[ "$icon_file" =~ \.png$|\.jpg$|\.jpeg$ ]]; then
   tmp_dir="$(mktemp -d)"
   tmp_icns="$tmp_dir/converted.icns"
   sips -s format icns "$icon_file" --out "$tmp_icns" >/dev/null 2>&1 || {
-    echo "Could not convert $icon_file to ICNS with sips." >&2
+    echo "Could not convert $icon_file to ICNS." >&2
     exit 1
   }
   icon_file="$tmp_icns"
