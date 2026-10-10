@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# seticon v0.1
+# Usage: seticon <target> <icon-file>
+# Example: seticon Finder ./icons/finder.icns
+
+usage() {
+  cat <<'EOF'
+Usage:
+  seticon <target> <icon-file>
+
+Examples:
+  seticon Finder ./icons/finder.icns
+  seticon /Applications/Utilities/Terminal.app ./icons/terminal.icns
+  seticon ~/Desktop/MyFolder ./icons/folder.icns
+  seticon safari ./icons/safari.icns
+
+Notes:
+  - target can be a file, folder, or app path
+  - app aliases like finder, safari, terminal are supported
+  - icon file should be .icns, .png, or .jpg
+EOF
+}
+
+if [[ $# -ne 2 ]]; then
+  usage
+  exit 1
+fi
+
+if [[ "$(uname)" != "Darwin" ]]; then
+  echo "This tool only works on macOS." >&2
+  exit 1
+fi
+
+target="$1"
+icon_file="$2"
+
+alias_to_path() {
+  local name="${1,,}"
+  case "$name" in
+    finder) echo "/System/Applications/Finder.app" ;;
+    terminal) echo "/System/Applications/Utilities/Terminal.app" ;;
+    safari) echo "/Applications/Safari.app" ;;
+    mail) echo "/Applications/Mail.app" ;;
+    calendar) echo "/Applications/Calendar.app" ;;
+    notes) echo "/Applications/Notes.app" ;;
+    *) echo "" ;;
+  esac
+}
+
+if [[ ! -f "$icon_file" ]]; then
+  if [[ -f "$PWD/$icon_file" ]]; then
+    icon_file="$PWD/$icon_file"
+  else
+    echo "Icon file not found: $icon_file" >&2
+    exit 1
+  fi
+fi
+
+# Allow names like finder, terminal, safari
+if [[ "$target" != /* && "$target" != ~* && "$target" != .* ]]; then
+  resolved_target="$(alias_to_path "$target")"
+  if [[ -n "$resolved_target" ]]; then
+    target="$resolved_target"
+  fi
+fi
+
+if [[ ! -e "$target" ]]; then
+  echo "Target not found: $target" >&2
+  exit 1
+fi
+
+# Convert PNG/JPG to ICNS for compatibility if needed
+if [[ "$icon_file" =~ \.png$|\.jpg$|\.jpeg$ ]]; then
+  tmp_dir="$(mktemp -d)"
+  tmp_icns="$tmp_dir/converted.icns"
+  sips -s format icns "$icon_file" --out "$tmp_icns" >/dev/null 2>&1 || {
+    echo "Could not convert $icon_file to ICNS with sips." >&2
+    exit 1
+  }
+  icon_file="$tmp_icns"
+fi
+
+osascript <<EOF
+try
+  tell application "Finder"
+    set theTarget to POSIX file "$target" as alias
+    set theIcon to POSIX file "$icon_file" as alias
+    set icon of theTarget to theIcon
+  end tell
+on error errMsg
+  display dialog errMsg buttons {"OK"} default button "OK"
+  error errMsg
+end try
+EOF
+
+echo "Icon applied: $target -> $icon_file"

@@ -1,0 +1,7 @@
+# Sample app targets
+# Examples:
+# /Applications/Utilities/Terminal.app
+# /System/Applications/Finder.app
+# /Applications/Safari.app
+# /Applications/Mail.app
+# /Applications/Calendar.app
